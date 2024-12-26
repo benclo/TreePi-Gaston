@@ -1,0 +1,94 @@
+g1:
+edge 1 2 a
+edge 2 3 a
+edge 3 4 a
+edge 4 5 b
+edge 5 1 a
+edge 5 6 a
+edge 6 7 a
+edge 7 8 a
+edge 8 9 a
+edge 9 10 b
+edge 9 4 a
+edge 7 11 b
+edge 11 12 a
+edge 12 13 b
+edge 13 14 a
+edge 14 15 b
+edge 14 8 a
+vertex 1 1
+vertex 2 3
+vertex 3 1
+vertex 4 3
+vertex 5 3
+vertex 6 1
+vertex 7 3
+vertex 8 1
+vertex 9 1
+vertex 10 2
+vertex 11 1
+vertex 12 3
+vertex 13 1
+vertex 14 3
+vertex 15 2
+end
+
+g2:
+edge 1 2 a
+edge 2 3 a
+edge 3 4 b
+edge 4 5 a
+edge 5 1 a
+edge 5 6 a
+edge 3 7 a
+edge 7 8 a
+edge 8 9 b
+edge 8 10 a
+edge 10 11 a
+edge 10 12 a
+edge 12 13 b
+edge 12 4 a
+vertex 1 1
+vertex 2 1
+vertex 3 3
+vertex 4 3
+vertex 5 1
+vertex 6 1
+vertex 7 1
+vertex 8 3
+vertex 9 2
+vertex 10 1
+vertex 11 1
+vertex 12 1
+vertex 13 2
+end
+
+g3:
+edge 1 2 a
+edge 2 3 a
+edge 3 4 b
+edge 4 5 a
+edge 5 1 a
+edge 5 6 a
+edge 3 7 a
+edge 7 8 a
+edge 7 9 a
+edge 9 10 b
+edge 9 11 a
+edge 11 12 a
+edge 12 13 b
+edge 12 4 a
+vertex 1 1
+vertex 2 1
+vertex 3 3
+vertex 4 3
+vertex 5 1
+vertex 6 1
+vertex 7 1
+vertex 8 1
+vertex 9 3
+vertex 10 2
+vertex 11 1
+vertex 12 1
+vertex 13 2
+end
