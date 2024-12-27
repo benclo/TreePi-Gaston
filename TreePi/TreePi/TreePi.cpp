@@ -30,7 +30,7 @@ public:
     }
 
     // Helper function to get the connected components of the graph
-    vector<unordered_set<int>> getConnectedComponents() const{
+    vector<unordered_set<int>> getConnectedComponents() const {
         unordered_set<int> visited;
         vector<unordered_set<int>> components;
 
@@ -46,7 +46,7 @@ public:
     }
 
     // Depth-First Search to find connected components
-    void dfs(int node, unordered_set<int>& visited, unordered_set<int>& component) const{
+    void dfs(int node, unordered_set<int>& visited, unordered_set<int>& component) const {
         visited.insert(node);
         component.insert(node);
 
@@ -471,13 +471,12 @@ void calculateAlphaBetaEta(int sq, const vector<Graph>& database, int& alpha, in
     int totalGraphs = 0;
 }
 
-
 class Index {
 private:
     Graph tree;
 
     struct NodeTuple {
-        string edgeLabel;      // Le
+        std::string edgeLabel; // Le
         int nodeLabel;         // Lv
         int nodeId;            // Original node ID
 
@@ -489,21 +488,110 @@ private:
         }
     };
 
+    // Mapping of Graph nodes to their corresponding NodeTuple
+    std::map<int, NodeTuple> nodeTuples;
+
+    // Method to initialize the mapping of nodes to NodeTuples
+    void initializeNodeTuples() {
+        // Calculate tree center(s)
+        auto centers = tree.calculateTreeCenter();
+        if (centers.empty()) {
+            throw std::runtime_error("Tree is empty or disconnected.");
+        }
+
+        // Assume the first center as the root
+        int root = centers[0];
+
+        // Initialize tuples with NULL edge labels for all nodes
+        for (const auto& [node, _] : tree.adjList) {
+            nodeTuples[node] = { "", tree.vertexNames.at(node), node };
+        }
+
+        // Set edge labels for non-root nodes
+        for (const auto& [node, neighbors] : tree.adjList) {
+            for (const auto& [neighbor, edgeLabel] : neighbors) {
+                if (node != root && nodeTuples[node].edgeLabel.empty()) {
+                    nodeTuples[node].edgeLabel = edgeLabel;
+                }
+            }
+        }
+
+        // Set the root's edge label to NULL
+        nodeTuples[root].edgeLabel = "NULL";
+    }
+
+    // Construct the canonical form of the tree using BFS
+    std::string constructCanonicalForm() const {
+        auto centers = tree.calculateTreeCenter();
+        if (centers.empty()) {
+            return ""; // Handle empty or disconnected trees
+        }
+        int root = centers[0];
+
+        // BFS traversal
+        std::queue<std::pair<int, int>> bfsQueue; // Pair of (node, parent)
+        bfsQueue.push({ root, -1 });
+
+        std::stringstream canonicalForm;
+
+        while (!bfsQueue.empty()) {
+            int current = bfsQueue.front().first;
+            int parent = bfsQueue.front().second;
+            bfsQueue.pop();
+
+            // Add the current node's tuple (Le, Lv, parent Lv) to the canonical form
+            const NodeTuple& tuple = nodeTuples.at(current);
+            canonicalForm << "(" << tuple.edgeLabel << "," << tuple.nodeLabel << ")";
+
+            // Gather and sort children
+            std::vector<NodeTuple> children;
+            for (const auto& neighbor : tree.adjList.at(current)) {
+                if (neighbor.first != parent) { // Skip the parent node
+                    children.push_back({ neighbor.second, tree.vertexNames.at(neighbor.first), neighbor.first });
+                }
+            }
+            std::sort(children.begin(), children.end());
+
+            // Add children to the BFS queue in sorted order
+            for (const auto& child : children) {
+                bfsQueue.push({ child.nodeId, current });
+            }
+        }
+
+        return canonicalForm.str();
+    }
+
 public:
     // Constructor to initialize the Index with a given Graph (tree)
-    explicit Index(const Graph& inputTree) : tree(inputTree) {}
+    explicit Index(const Graph& inputTree) : tree(inputTree) {
+        initializeNodeTuples();
+    }
+
+    // Method to display the NodeTuples for debugging
+    void displayNodeTuples() const {
+        std::cout << "Node Tuples:\n";
+        for (const auto& [nodeId, tuple] : nodeTuples) {
+            std::cout << "Node " << nodeId << ", Label (" << tuple.edgeLabel << ", " << tuple.nodeLabel << ")\n";
+        }
+    }
+
+    // Method to get and display the canonical form
+    void displayCanonicalForm() const {
+        std::string canonicalForm = constructCanonicalForm();
+        std::cout << "Canonical Form: " << canonicalForm << std::endl;
+    }
 
     // Method to display basic information about the tree (for debugging)
     void displayTreeInfo() const {
-        cout << "Tree Encoding: " << tree.encode() << endl;
-        cout << "Tree Size (edges): " << tree.size() << endl;
+        std::cout << "Tree Encoding: " << tree.encode() << std::endl;
+        std::cout << "Tree Size (edges): " << tree.size() << std::endl;
 
         auto centers = tree.calculateTreeCenter();
-        cout << "Tree Centers: ";
+        std::cout << "Tree Centers: ";
         for (int center : centers) {
-            cout << center << " (Name: " << tree.vertexNames.at(center) << ") ";
+            std::cout << center << " (Name: " << tree.vertexNames.at(center) << ") ";
         }
-        cout << std::endl;
+        std::cout << std::endl;
     }
 };
 
@@ -528,12 +616,16 @@ int main() {
     double gamma = 1;
     vector<Graph> finalTrees = shrinkTrees(freqTrees, subtreeFrequency, gamma); // Shrink the trees based on intersection
 
-    outputFinalTrees(finalTrees); // Output the final trees
+    vector<Index> indexes;
+    for (auto tree : finalTrees)
+    {
+        Index idx(tree);
+        indexes.push_back(idx);
+        idx.displayTreeInfo();
+        idx.displayCanonicalForm();
+    }
 
-    /*Index idx(finalTrees.front());
-    idx.displayTreeInfo();*/
+    
 
     return 0;
 }
-
-
