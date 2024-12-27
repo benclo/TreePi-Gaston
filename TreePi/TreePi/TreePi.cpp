@@ -73,7 +73,6 @@ public:
         }
     }
 
-
     string encode() const {
         string encoding = "";
 
@@ -440,6 +439,39 @@ void outputFinalTrees(const vector<Graph>& finalTrees) {
     }
 }
 
+// Function to calculate the average size of query graphs (sq)
+int calculateAverageQueryGraphSize(const vector<Graph>& queryGraphs) {
+    int totalSize = 0;
+    for (const auto& graph : queryGraphs) {
+        totalSize += graph.size();
+    }
+    return totalSize / queryGraphs.size();
+}
+
+// Function to calculate the average size of graphs in the database (sD)
+int calculateAverageDatabaseGraphSize(const vector<Graph>& database) {
+    int totalSize = 0;
+    for (const auto& graph : database) {
+        totalSize += graph.size();
+    }
+    return totalSize / database.size();
+}
+
+// Function to calculate alpha, beta, eta
+void calculateAlphaBetaEta(int sq, const vector<Graph>& database, int& alpha, int& eta) {
+    // Alpha: set between sq/4 and sq/2 (let's choose sq/4 for now)
+    alpha = sq / 4;
+
+    // Eta: set to the minimum of sq and average size of graphs in the database (sD)
+    int sD = calculateAverageDatabaseGraphSize(database);
+    eta = std::min(sq, sD);
+
+    // Beta: set based on the frequency of substructures with fewer than 10 edges in the database
+    int substructureCount = 0;
+    int totalGraphs = 0;
+}
+
+
 class Index {
 private:
     Graph tree;
@@ -478,14 +510,19 @@ public:
 // #TODO
 // 1. Index class
 // 2. Querying
-// 3. Calculation of alpha, beta, eta and gamma
 
 int main() {
     vector<Graph> database = setupGraphs("graph.txt"); // Setup the graphs
 
+    // Calculate the average size of query graphs (sq)
+    int sq = 6; // Example value for sq (you can adjust this)
+
+    // Calculate alpha, beta, eta
+    int alpha, beta = 1, eta;
+    calculateAlphaBetaEta(sq, database, alpha, eta);
+
     unordered_map<Graph, unordered_set<int>, GraphHasher> subtreeFrequency = calculateSubtreeFrequency(database); // Calculate subtree frequencies
 
-    int alpha = 1, beta = 1, eta = 10;
     vector<Graph> freqTrees = filterTreesBySupport(subtreeFrequency, alpha, beta, eta); // Filter trees based on support function
 
     double gamma = 1;
@@ -498,4 +535,5 @@ int main() {
 
     return 0;
 }
+
 
