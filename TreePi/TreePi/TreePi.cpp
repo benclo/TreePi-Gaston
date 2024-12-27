@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <stack>
 #include <queue>
+#include <fstream>
 
 using namespace std;
 
@@ -283,103 +284,61 @@ struct GraphHasher {
     }
 };
 
-// Function to setup the graphs (add edges and vertex names)
-vector<Graph> setupGraphs() {
-    Graph g1;
-    g1.addEdge(1, 2, "a");
-    g1.addEdge(2, 3, "a");
-    g1.addEdge(3, 4, "a");
-    g1.addEdge(4, 5, "b");
-    g1.addEdge(5, 1, "a");
-    g1.addEdge(5, 6, "a");
-    g1.addEdge(6, 7, "a");
-    g1.addEdge(7, 8, "a");
-    g1.addEdge(8, 9, "a");
-    g1.addEdge(9, 10, "b");
-    g1.addEdge(9, 4, "a");
-    g1.addEdge(7, 11, "b");
-    g1.addEdge(11, 12, "a");
-    g1.addEdge(12, 13, "b");
-    g1.addEdge(13, 14, "a");
-    g1.addEdge(14, 15, "b");
-    g1.addEdge(14, 8, "a");
-    g1.setVertexName(1, 1);
-    g1.setVertexName(2, 3);
-    g1.setVertexName(3, 1);
-    g1.setVertexName(4, 3);
-    g1.setVertexName(5, 3);
-    g1.setVertexName(6, 1);
-    g1.setVertexName(7, 3);
-    g1.setVertexName(8, 1);
-    g1.setVertexName(9, 1);
-    g1.setVertexName(10, 2);
-    g1.setVertexName(11, 1);
-    g1.setVertexName(12, 3);
-    g1.setVertexName(13, 1);
-    g1.setVertexName(14, 3);
-    g1.setVertexName(15, 2);
+// Function to read graphs from a file
+vector<Graph> setupGraphs(const string& filename) {
+    vector<Graph> database;
+    ifstream inputFile(filename);
+    string line;
 
-    Graph g2;
-    g2.addEdge(1, 2, "a");
-    g2.addEdge(2, 3, "a");
-    g2.addEdge(3, 4, "b");
-    g2.addEdge(4, 5, "a");
-    g2.addEdge(5, 1, "a");
-    g2.addEdge(5, 6, "a");
-    g2.addEdge(3, 7, "a");
-    g2.addEdge(7, 8, "a");
-    g2.addEdge(8, 9, "b");
-    g2.addEdge(8, 10, "a");
-    g2.addEdge(10, 11, "a");
-    g2.addEdge(10, 12, "a");
-    g2.addEdge(12, 13, "b");
-    g2.addEdge(12, 4, "a");
-    g2.setVertexName(1, 1);
-    g2.setVertexName(2, 1);
-    g2.setVertexName(3, 3);
-    g2.setVertexName(4, 3);
-    g2.setVertexName(5, 1);
-    g2.setVertexName(6, 1);
-    g2.setVertexName(7, 1);
-    g2.setVertexName(8, 3);
-    g2.setVertexName(9, 2);
-    g2.setVertexName(10, 1);
-    g2.setVertexName(11, 1);
-    g2.setVertexName(12, 1);
-    g2.setVertexName(13, 2);
+    if (!inputFile.is_open()) {
+        cerr << "Error: Could not open file " << filename << endl;
+        return database;
+    }
 
-    Graph g3;
-    g3.addEdge(1, 2, "a");
-    g3.addEdge(2, 3, "a");
-    g3.addEdge(3, 4, "b");
-    g3.addEdge(4, 5, "a");
-    g3.addEdge(5, 1, "a");
-    g3.addEdge(5, 6, "a");
-    g3.addEdge(3, 7, "a");
-    g3.addEdge(7, 8, "a");
-    g3.addEdge(7, 9, "a");
-    g3.addEdge(9, 10, "b");
-    g3.addEdge(9, 11, "a");
-    g3.addEdge(11, 12, "a");
-    g3.addEdge(12, 13, "b");
-    g3.addEdge(12, 4, "a");
-    g3.setVertexName(1, 1);
-    g3.setVertexName(2, 1);
-    g3.setVertexName(3, 3);
-    g3.setVertexName(4, 3);
-    g3.setVertexName(5, 1);
-    g3.setVertexName(6, 1);
-    g3.setVertexName(7, 1);
-    g3.setVertexName(8, 1);
-    g3.setVertexName(9, 3);
-    g3.setVertexName(10, 2);
-    g3.setVertexName(11, 1);
-    g3.setVertexName(12, 1);
-    g3.setVertexName(13, 2);
+    Graph currentGraph;
+    while (getline(inputFile, line)) {
+        // Trim whitespace
+        line.erase(remove(line.begin(), line.end(), '\r'), line.end());
+        line.erase(remove(line.begin(), line.end(), '\n'), line.end());
 
-    vector<Graph> database = { g1, g2, g3 };
+        if (line.empty()) continue;
 
-    return database; // Add graphs to the database
+        if (line.back() == ':') { // Start of a new graph
+            if (!currentGraph.adjList.empty()) {
+                database.push_back(currentGraph);
+                currentGraph = Graph();
+            }
+        }
+        else if (line == "end") { // End of the current graph
+            if (!currentGraph.adjList.empty()) {
+                database.push_back(currentGraph);
+                currentGraph = Graph();
+            }
+        }
+        else if (line.find("edge") == 0) { // Parse an edge
+            istringstream iss(line);
+            string command;
+            int u, v;
+            string label;
+            iss >> command >> u >> v >> label;
+            currentGraph.addEdge(u, v, label);
+        }
+        else if (line.find("vertex") == 0) { // Parse a vertex
+            istringstream iss(line);
+            string command;
+            int position, name;
+            iss >> command >> position >> name;
+            currentGraph.setVertexName(position, name);
+        }
+    }
+
+    // Add the last graph if not already added
+    if (!currentGraph.adjList.empty()) {
+        database.push_back(currentGraph);
+    }
+
+    inputFile.close();
+    return database;
 }
 
 // Function to calculate the frequency of each subtree in the graph database
@@ -478,21 +437,51 @@ void outputFinalTrees(const vector<Graph>& finalTrees) {
     cout << "Final Trees after Shrinking:\n";
     for (const auto& tree : finalTrees) {
         cout << tree.encode() << "\n";
-        vector<int> centers = tree.calculateTreeCenter();
-        for (int i : centers) {
-            cout << "Center Node ID: " << i << ", Name: " << tree.vertexNames.at(i) << endl;
-        }
     }
 }
+
+class Index {
+private:
+    Graph tree;
+
+    struct NodeTuple {
+        string edgeLabel;      // Le
+        int nodeLabel;         // Lv
+        int nodeId;            // Original node ID
+
+        // Comparison operator for sorting
+        bool operator<(const NodeTuple& other) const {
+            if (edgeLabel != other.edgeLabel) return edgeLabel < other.edgeLabel;
+            if (nodeLabel != other.nodeLabel) return nodeLabel < other.nodeLabel;
+            return nodeId < other.nodeId; // Tie-breaking by node ID
+        }
+    };
+
+public:
+    // Constructor to initialize the Index with a given Graph (tree)
+    explicit Index(const Graph& inputTree) : tree(inputTree) {}
+
+    // Method to display basic information about the tree (for debugging)
+    void displayTreeInfo() const {
+        cout << "Tree Encoding: " << tree.encode() << endl;
+        cout << "Tree Size (edges): " << tree.size() << endl;
+
+        auto centers = tree.calculateTreeCenter();
+        cout << "Tree Centers: ";
+        for (int center : centers) {
+            cout << center << " (Name: " << tree.vertexNames.at(center) << ") ";
+        }
+        cout << std::endl;
+    }
+};
 
 // #TODO
 // 1. Index class
 // 2. Querying
-// 3. setupGraphs from file
-// 4. Calculation of alpha, beta, eta and gamma
+// 3. Calculation of alpha, beta, eta and gamma
 
 int main() {
-    vector<Graph> database = setupGraphs(); // Setup the graphs
+    vector<Graph> database = setupGraphs("graph.txt"); // Setup the graphs
 
     unordered_map<Graph, unordered_set<int>, GraphHasher> subtreeFrequency = calculateSubtreeFrequency(database); // Calculate subtree frequencies
 
@@ -503,6 +492,9 @@ int main() {
     vector<Graph> finalTrees = shrinkTrees(freqTrees, subtreeFrequency, gamma); // Shrink the trees based on intersection
 
     outputFinalTrees(finalTrees); // Output the final trees
+
+    /*Index idx(finalTrees.front());
+    idx.displayTreeInfo();*/
 
     return 0;
 }
