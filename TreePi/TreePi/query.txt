@@ -1,0 +1,47 @@
+g1:
+edge 1 2 a
+vertex 1 1
+vertex 2 3
+end
+
+g2:
+edge 1 2 a
+vertex 1 3
+vertex 2 1
+end
+
+g2:
+edge 1 2 a
+vertex 1 1
+vertex 2 1
+end
+
+g2:
+edge 1 2 b
+vertex 1 3
+vertex 2 3
+end
+
+g2:
+edge 1 2 b
+vertex 1 1
+vertex 2 2
+end
+
+g2:
+edge 1 2 b
+vertex 1 2
+vertex 2 1
+end
+
+g2:
+edge 1 2 b
+vertex 1 2
+vertex 2 3
+end
+
+g2:
+edge 1 2 b
+vertex 1 3
+vertex 2 2
+end
