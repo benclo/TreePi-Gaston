@@ -472,9 +472,6 @@ public:
 
 };
 
-// #TODO
-// 1. Querying
-
 // Check if a graph is a feature tree by looking it up in the feature tree index
 bool isFeatureTree(Index idx, BPlusTree<Index> BTree) {
     if (BTree.search(idx))
@@ -547,21 +544,21 @@ int main() {
 
     vector<Graph> database = setupGraphs("graph.txt"); // Setup the graphs
 
-    start = chrono::system_clock::now();
-
     // Calculate the average size of query graphs (sq)
     int sq = 10; // Example value for sq (you can adjust this)
 
     // Calculate alpha, beta, eta
-    int alpha, beta = 1, eta;
+    int alpha, beta = 5, eta;
     calculateAlphaBetaEta(sq, database, alpha, eta);
 
     unordered_map<Graph, unordered_set<int>, GraphHasher> subtreeFrequency = calculateSubtreeFrequency(database); // Calculate subtree frequencies
 
     vector<Graph> freqTrees = filterTreesBySupport(subtreeFrequency, alpha, beta, eta); // Filter trees based on support function
 
-    double gamma = 1;
+    double gamma = 2;
     vector<Graph> finalTrees = shrinkTrees(freqTrees, subtreeFrequency, gamma); // Shrink the trees based on intersection
+
+    start = chrono::system_clock::now();
 
     BPlusTree<Index> BTree(3);
 
