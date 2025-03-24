@@ -16,6 +16,8 @@
 #include <random>
 #include <ctime>
 #include <chrono>
+#include <set>
+
 
 using namespace std;
 using namespace chrono;
@@ -184,6 +186,59 @@ vector<Graph> setupGraphs(const string& filename) {
     return database;
 }
 
+// Function to read graphs from a file GASTON
+vector<Graph> setupGraphsGaston(const string& filename) {
+    vector<Graph> database;
+    ifstream inputFile(filename);
+    string line;
+
+    if (!inputFile.is_open()) {
+        cerr << "Error: Could not open file " << filename << endl;
+        return database;
+    }
+
+    Graph currentGraph;
+    while (getline(inputFile, line)) {
+        if (inputFile.eof()) break;
+
+        // Trim whitespace
+        line.erase(remove(line.begin(), line.end(), '\r'), line.end());
+        line.erase(remove(line.begin(), line.end(), '\n'), line.end());
+
+        if (line.empty()) continue;
+
+        if (line.find("t #") == 0) { // New graph detected
+            if (!currentGraph.adjList.empty()) {
+                database.push_back(currentGraph);
+                currentGraph = Graph();
+            }
+        }
+        else if (line.find("v ") == 0) { // Parse vertex
+            istringstream iss(line);
+            char v;
+            int id, label;
+            iss >> v >> id >> label;
+            currentGraph.setVertexName(id, label);
+        }
+        else if (line.find("e ") == 0) { // Parse edge
+            istringstream iss(line);
+            char e;
+            int u, v;
+            string label;
+            iss >> e >> u >> v >> label;
+            currentGraph.addEdge(u, v, label);
+        }
+    }
+
+    // Add last graph if not already added
+    if (!currentGraph.adjList.empty()) {
+        database.push_back(currentGraph);
+    }
+
+    inputFile.close();
+    return database;
+}
+
 // Function to calculate the frequency of each subtree in the graph database
 unordered_map<Graph, unordered_set<int>, GraphHasher> calculateSubtreeFrequency(const vector<Graph>& database) {
     unordered_map<Graph, unordered_set<int>, GraphHasher> subtreeFrequency;
@@ -207,6 +262,61 @@ unordered_map<Graph, unordered_set<int>, GraphHasher> calculateSubtreeFrequency(
     return subtreeFrequency;
 }
 
+unordered_map<Graph, int, GraphHasher> calculateSubtreeFrequencyGaston(const string& filename) {
+    unordered_map<Graph, int, GraphHasher> subtreeFrequency;
+    ifstream inputFile(filename);
+    string line;
+
+    if (!inputFile.is_open()) {
+        cerr << "Error: Could not open file " << filename << endl;
+        return subtreeFrequency;
+    }
+
+    int frequency = 0;
+    Graph currentGraph;
+
+    while (getline(inputFile, line)) {
+        // Trim whitespace
+        line.erase(remove(line.begin(), line.end(), '\r'), line.end());
+        line.erase(remove(line.begin(), line.end(), '\n'), line.end());
+
+        if (line.empty()) continue;
+
+        if (line.find("# ") == 0) {  // Frequency line
+            if (!currentGraph.adjList.empty()) {
+                subtreeFrequency.insert({ currentGraph, frequency }); // Store frequency
+                currentGraph = Graph(); // Reset for new subtree
+            }
+            istringstream iss(line);
+            char hash;
+            iss >> hash >> frequency;
+        }
+        else if (line.find("v ") == 0) { // Parse vertex
+            istringstream iss(line);
+            char v;
+            int id, label;
+            iss >> v >> id >> label;
+            currentGraph.setVertexName(id, label);
+        }
+        else if (line.find("e ") == 0) { // Parse edge
+            istringstream iss(line);
+            char e;
+            int u, v;
+            string label;
+            iss >> e >> u >> v >> label;
+            currentGraph.addEdge(u, v, label);
+        }
+    }
+
+    if (!currentGraph.adjList.empty()) {
+        subtreeFrequency.insert({ currentGraph, frequency }); // Store frequency
+    }
+
+    inputFile.close();
+    return subtreeFrequency;
+}
+
+
 // Function to filter trees based on the support function
 vector<Graph> filterTreesBySupport(const unordered_map<Graph, unordered_set<int>, GraphHasher>& subtreeFrequency, int alpha, int beta, int eta) {
     vector<Graph> freqTrees;
@@ -220,6 +330,21 @@ vector<Graph> filterTreesBySupport(const unordered_map<Graph, unordered_set<int>
 
     return freqTrees;
 }
+
+// Function to filter trees based on the support function Gaston
+vector<Graph> filterTreesBySupportGaston(const unordered_map<Graph, int, GraphHasher>& subtreeFrequency, int alpha, int beta, int eta) {
+    vector<Graph> freqTrees;
+
+    for (const auto& entry : subtreeFrequency) {
+        int support = entry.second;
+        if (support >= supportFunction(entry.first.size(), alpha, beta, eta)) {
+            freqTrees.push_back(entry.first);
+        }
+    }
+
+    return freqTrees;
+}
+
 
 // Function to shrink trees based on the intersection of support sets
 vector<Graph> shrinkTrees(const vector<Graph>& freqTrees, const unordered_map<Graph, unordered_set<int>, GraphHasher>& subtreeFrequency, double gamma) {
@@ -281,6 +406,72 @@ vector<Graph> shrinkTrees(const vector<Graph>& freqTrees, const unordered_map<Gr
     return finalTrees;
 }
 
+// Function to shrink trees based on the intersection of support sets GASTON
+vector<Graph> shrinkTreesGaston(const vector<Graph>& freqTrees, const unordered_map<Graph, int, GraphHasher>& subtreeFrequency, double gamma) {
+    vector<Graph> finalTrees;
+
+    for (size_t idx = 0; idx < freqTrees.size(); ++idx) {
+        auto& tree = freqTrees[idx];
+
+        // **Ensure single-edge trees are always retained**
+        if (tree.size() == 1) {
+            finalTrees.push_back(tree);
+            continue; // Skip shrinking logic for single-edge trees
+        }
+
+        // Extract the connected components of the current tree
+        vector<unordered_set<int>> components = tree.getConnectedComponents();
+
+        // Collect all subtrees for the current tree
+        vector<Graph> subtrees;
+        for (auto& component : components) {
+            vector<Graph> componentTrees = generateTrees(component, tree);
+            subtrees.insert(subtrees.end(), componentTrees.begin(), componentTrees.end());
+        }
+
+        // Remove the tree itself (r) from the list of subtrees
+        subtrees.erase(
+            remove_if(
+                subtrees.begin(), subtrees.end(),
+                [&tree](const Graph& subtree) { return subtree.encode() == tree.encode(); }
+            ),
+            subtrees.end()
+        );
+
+        // Compute the frequency intersection approximation
+        if (!subtrees.empty()) { // Check to avoid accessing invalid indices
+            int minSubtreeFreq = INT_MAX;
+
+            for (const auto& subtree : subtrees) {
+                auto it = subtreeFrequency.find(subtree);
+                if (it != subtreeFrequency.end()) {
+                    minSubtreeFreq = min(minSubtreeFreq, it->second);
+                }
+            }
+
+            if (minSubtreeFreq == INT_MAX) {
+                continue; // No valid subtree frequencies found, skip this tree
+            }
+
+            // Get tree's own frequency safely
+            auto itTree = subtreeFrequency.find(tree);
+            if (itTree == subtreeFrequency.end()) {
+                continue; // If tree is not found, skip
+            }
+            int treeSupport = itTree->second;
+
+            // Calculate shrink ratio
+            double shrinkRatio = static_cast<double>(minSubtreeFreq) / treeSupport;
+
+            // Apply shrinking criterion
+            if (shrinkRatio >= gamma) {
+                finalTrees.push_back(tree); // Keep the tree
+            }
+        }
+    }
+
+    return finalTrees;
+}
 
 // Function to output the final trees and their centers
 void outputFinalTrees(const vector<Graph>& finalTrees) {
@@ -481,7 +672,7 @@ bool isFeatureTree(Index idx, BPlusTree<Index> BTree) {
 }
 
 // Function to generate chemical graphs and write to a file
-void generateChemicalGraphs(int numGraphs = 10, int numVertices = 20, int numEdges = 30) {
+void generateChemicalGraphs(int numGraphs = 10, int numVertices = 17, int numEdges = 22) {
     // Initialize random number generator
     mt19937 rng(static_cast<unsigned>(time(0))); // Seed with current time
     uniform_int_distribution<int> vertexDist(1, numVertices);
@@ -516,12 +707,13 @@ void generateChemicalGraphs(int numGraphs = 10, int numVertices = 20, int numEdg
 
         // Write graph details to the file
         outFile << "g" << g + 1 << ":\n";
-        for (const auto& edge : edges) {
-            outFile << "edge " << get<0>(edge) << " " << get<1>(edge) << " " << get<2>(edge) << "\n";
-        }
         for (int i = 0; i < numVertices; ++i) {
             outFile << "vertex " << i + 1 << " " << vertices[i] << "\n";  // Vertex names are from 1 to numVertices
         }
+        for (const auto& edge : edges) {
+            outFile << "edge " << get<0>(edge) << " " << get<1>(edge) << " " << get<2>(edge) << "\n";
+        }
+        
         outFile << "end\n";
     }
 
@@ -530,8 +722,66 @@ void generateChemicalGraphs(int numGraphs = 10, int numVertices = 20, int numEdg
     cout << "Number of graphs: " << numGraphs << " Number of vertices: " << numVertices << " Number of edges: " << numEdges << endl;
 }
 
-int main() {
+// Function to generate chemical graphs and write in Gaston format
+void generateChemicalGraphsGaston(int numGraphs = 100, int numVertices = 17, int numEdges = 22) {
+    mt19937 rng(static_cast<unsigned>(time(0))); // Random generator
+    uniform_int_distribution<int> vertexDist(0, numVertices - 1);
+    uniform_int_distribution<int> labelDist(0, 3);  // Vertex labels {0, 1, 2, 3}
+    uniform_int_distribution<int> edgeLabelDist(0, 2); // Edge labels {0, 1, 2}
 
+    ofstream outFile("C:/Users/matas/Desktop/Universitetas/Ketvirtas kursas/Astuntas semestras/Bakalauras/Chemical_340");
+
+    for (int g = 0; g < numGraphs; ++g) {
+        vector<int> vertices(numVertices);
+        for (int i = 0; i < numVertices; ++i) {
+            vertices[i] = labelDist(rng);
+        }
+
+        vector<tuple<int, int, int>> edges;
+        set<pair<int, int>> edgeSet; // Ensures unique edges
+
+        // ?? Ensure connectivity using a spanning tree first
+        vector<int> perm(numVertices);
+        for (int i = 0; i < numVertices; ++i) perm[i] = i;
+        shuffle(perm.begin(), perm.end(), rng);
+
+        for (int i = 1; i < numVertices; ++i) {
+            int v1 = perm[i - 1];
+            int v2 = perm[i];
+            int edgeLabel = edgeLabelDist(rng);
+            edges.emplace_back(v1, v2, edgeLabel);
+            edgeSet.insert({ min(v1, v2), max(v1, v2) });
+        }
+
+        // ?? Add remaining random edges (ensuring uniqueness)
+        while (edges.size() < numEdges) {
+            int v1 = vertexDist(rng);
+            int v2 = vertexDist(rng);
+            while (v1 == v2 || edgeSet.count({ min(v1, v2), max(v1, v2) })) {
+                v1 = vertexDist(rng);
+                v2 = vertexDist(rng);
+            }
+            int edgeLabel = edgeLabelDist(rng);
+            edges.emplace_back(v1, v2, edgeLabel);
+            edgeSet.insert({ min(v1, v2), max(v1, v2) });
+        }
+
+        // Write in Gaston format
+        outFile << "t # " << g << "\n";
+        for (int i = 0; i < numVertices; ++i) {
+            outFile << "v " << i << " " << vertices[i] << "\n";
+        }
+        for (const auto& edge : edges) {
+            outFile << "e " << get<0>(edge) << " " << get<1>(edge) << " " << get<2>(edge) << "\n";
+        }
+    }
+
+    outFile.close();
+    cout << "Generated " << numGraphs << " connected graphs in Gaston format.\n";
+}
+
+int main() {
+    /*
     chrono::time_point<chrono::system_clock> start, end;
 
     start = chrono::system_clock::now();
@@ -545,18 +795,78 @@ int main() {
     vector<Graph> database = setupGraphs("graph.txt"); // Setup the graphs
 
     // Calculate the average size of query graphs (sq)
-    int sq = 10; // Example value for sq (you can adjust this)
+    int sq = 12; // Example value for sq (you can adjust this)
 
     // Calculate alpha, beta, eta
-    int alpha, beta = 5, eta;
+    int alpha, beta = 1, eta;
     calculateAlphaBetaEta(sq, database, alpha, eta);
 
     unordered_map<Graph, unordered_set<int>, GraphHasher> subtreeFrequency = calculateSubtreeFrequency(database); // Calculate subtree frequencies
 
     vector<Graph> freqTrees = filterTreesBySupport(subtreeFrequency, alpha, beta, eta); // Filter trees based on support function
 
-    double gamma = 2;
+    double gamma = 1;
     vector<Graph> finalTrees = shrinkTrees(freqTrees, subtreeFrequency, gamma); // Shrink the trees based on intersection
+
+    start = chrono::system_clock::now();
+
+    BPlusTree<Index> BTree(3);
+
+    for (auto tree : finalTrees)
+    {
+        Index idx(tree);
+        BTree.insert(idx);
+    }
+
+    end = chrono::system_clock::now();
+
+    elapsed_seconds = end - start;
+
+    cout << "Indexing time:" << elapsed_seconds.count() << endl;
+
+    start = chrono::system_clock::now();
+
+    vector<Graph> queries = setupGraphs("query.txt"); // Setup the graphs
+
+    for (auto query : queries) {
+        Index queryIdx(query);
+        cout << isFeatureTree(queryIdx, BTree);
+    }
+
+    end = chrono::system_clock::now();
+
+    elapsed_seconds = end - start;
+
+    cout << "Querying time:" << elapsed_seconds.count() << endl;
+    */
+    
+    //Here I need to do Gaston and parse it
+
+    chrono::time_point<chrono::system_clock> start, end;
+
+    start = chrono::system_clock::now();
+    generateChemicalGraphsGaston();
+    end = chrono::system_clock::now();
+
+    duration<double> elapsed_seconds = end - start;
+
+    cout << "Graph generation time:" << elapsed_seconds.count() << endl;
+    system("cd C:/Users/matas/Desktop/Universitetas/Ketvirtas kursas/Astuntas semestras/Bakalauras && gaston -t 50 Chemical_340 Chemical_340.out");
+
+    vector<Graph> databaseGaston = setupGraphsGaston("C:/Users/matas/Desktop/Universitetas/Ketvirtas kursas/Astuntas semestras/Bakalauras/Chemical_340"); // Setup the graphs
+    unordered_map<Graph, int, GraphHasher> subtreeFrequencyGaston = calculateSubtreeFrequencyGaston("C:/Users/matas/Desktop/Universitetas/Ketvirtas kursas/Astuntas semestras/Bakalauras/Chemical_340.out"); // Calculate subtree frequencies
+    
+    // Calculate the average size of query graphs (sq)
+    int sq = 12; // Example value for sq (you can adjust this)
+
+    // Calculate alpha, beta, eta
+    int alpha, beta = 1, eta;
+    calculateAlphaBetaEta(sq, databaseGaston, alpha, eta);
+    
+    vector<Graph> freqTrees = filterTreesBySupportGaston(subtreeFrequencyGaston, alpha, beta, eta); // Filter trees based on support function
+
+    double gamma = 1;
+    vector<Graph> finalTrees = shrinkTreesGaston(freqTrees, subtreeFrequencyGaston, gamma); // Shrink the trees based on intersection
 
     start = chrono::system_clock::now();
 
