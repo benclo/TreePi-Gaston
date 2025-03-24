@@ -398,8 +398,11 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+<<<<<<< HEAD
 
 # Add additional  VS files
 *.sln
 *.vcxproj
 *.vcxproj.filters
+=======
+>>>>>>> b37ab201ea339247386c4be51ab04a42ef9cca55
