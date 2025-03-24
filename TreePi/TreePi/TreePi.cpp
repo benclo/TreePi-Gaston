@@ -89,7 +89,7 @@ bool isAcyclic(const Graph& subgraph) {
     }
     return true;
 }
-
+//
 // Generate all valid trees (connected, acyclic subgraphs)
 vector<Graph> generateTrees(const unordered_set<int>& component, const Graph& originalGraph) {
     vector<Graph> subtrees;
