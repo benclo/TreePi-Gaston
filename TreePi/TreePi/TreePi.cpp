@@ -17,6 +17,7 @@
 #include <ctime>
 #include <chrono>
 #include <set>
+#include "gaston.h"
 
 using namespace std;
 using namespace chrono;
@@ -120,13 +121,6 @@ int supportFunction(int size, int alpha, int beta, int eta) {
     if (size > eta) return INT_MAX; // Exclude large trees
     return 1 + beta * (size - alpha);
 }
-
-// Hash function for Graph
-struct GraphHasher {
-    size_t operator()(const Graph& g) const {
-        return hash<string>{}(g.encode()); // Hash the encoded string
-    }
-};
 
 // Function to read graphs from a file
 vector<Graph> setupGraphs(const string& filename) {
@@ -573,13 +567,13 @@ bool isFeatureTree(Index idx, BPlusTree<Index> BTree) {
 }
 
 // Function to generate chemical graphs and write in Gaston format
-void generateChemicalGraphsGaston(int numGraphs = 100, int numVertices = 17, int numEdges = 22) {
+void generateChemicalGraphsGaston(int numGraphs = 1, int numVertices = 4, int numEdges = 4) {
     mt19937 rng(static_cast<unsigned>(time(0))); // Random generator
     uniform_int_distribution<int> vertexDist(0, numVertices - 1);
     uniform_int_distribution<int> labelDist(0, 3);  // Vertex labels {0, 1, 2, 3}
     uniform_int_distribution<int> edgeLabelDist(0, 2); // Edge labels {0, 1, 2}
 
-    ofstream outFile("C:/Users/matas/Desktop/Universitetas/Ketvirtas kursas/Astuntas semestras/Bakalauras/Chemical_340");
+    ofstream outFile("C:\\Users\\matas\\Desktop\\Universitetas\\Ketvirtas kursas\\Septintas semestras\\Projektinis\\TreePi\\TreePi\\TreePi\\graph.txt");
 
     for (int g = 0; g < numGraphs; ++g) {
         vector<int> vertices(numVertices);
@@ -640,11 +634,11 @@ int main() {
     duration<double> elapsed_seconds = end - start;
 
     cout << "Graph generation time:" << elapsed_seconds.count() << endl;
-    system("cd C:/Users/matas/Desktop/Universitetas/Ketvirtas kursas/Astuntas semestras/Bakalauras && gaston -t 50 Chemical_340 Chemical_340.out");
 
-    vector<Graph> databaseGaston = setupGraphsGaston("C:/Users/matas/Desktop/Universitetas/Ketvirtas kursas/Astuntas semestras/Bakalauras/Chemical_340"); // Setup the graphs
-    unordered_map<Graph, int, GraphHasher> subtreeFrequencyGaston = calculateSubtreeFrequencyGaston("C:/Users/matas/Desktop/Universitetas/Ketvirtas kursas/Astuntas semestras/Bakalauras/Chemical_340.out"); // Calculate subtree frequencies
-    
+    vector<Graph> databaseGaston = setupGraphsGaston("graph.txt"); // Setup the graphs
+    unordered_map<Graph, int, GraphHasher> subtreeFrequencyGaston = gaston(1, "C:\\Users\\matas\\Desktop\\Universitetas\\Ketvirtas kursas\\Septintas semestras\\Projektinis\\TreePi\\TreePi\\TreePi\\graph.txt", "C:\\Users\\matas\\Desktop\\Universitetas\\Ketvirtas kursas\\Septintas semestras\\Projektinis\\TreePi\\TreePi\\TreePi\\output.txt"); // Calculate subtree frequencies
+
+
     // Calculate the average size of query graphs (sq)
     int sq = 12; // Example value for sq (you can adjust this)
 

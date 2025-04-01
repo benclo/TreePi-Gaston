@@ -9,6 +9,7 @@
 #include <queue>
 #include <algorithm>
 #include <stdexcept>
+#include <functional>
 
 class Graph {
 public:
@@ -32,5 +33,11 @@ private:
     void dfs(int node, std::unordered_set<int>& visited, std::unordered_set<int>& component) const;
 };
 
+// Hash function for Graph
+struct GraphHasher {
+    size_t operator()(const Graph& g) const {
+        return std::hash<std::string>{}(g.encode()); // Hash the encoded string
+    }
+};
+
 #endif // GRAPH_H
-#pragma once
