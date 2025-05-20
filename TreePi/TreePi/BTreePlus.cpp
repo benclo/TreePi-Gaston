@@ -5,6 +5,8 @@ BPlusTree<T>::BPlusTree(int degree) : root(nullptr), t(degree) {}
 
 template <typename T>
 void BPlusTree<T>::splitChild(Node* parent, int index, Node* child) {
+    splitCount++; // <-- Count every time a split happens
+
     Node* newChild = new Node(child->isLeaf);
     parent->children.insert(parent->children.begin() + index + 1, newChild);
     parent->keys.insert(parent->keys.begin() + index, child->keys[t - 1]);
@@ -22,6 +24,7 @@ void BPlusTree<T>::splitChild(Node* parent, int index, Node* child) {
         child->next = newChild;
     }
 }
+
 
 template <typename T>
 void BPlusTree<T>::insertNonFull(Node* node, T key) {

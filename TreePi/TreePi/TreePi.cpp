@@ -19,6 +19,10 @@
 #include <set>
 #include "gaston.h"
 
+#ifdef __linux__
+#include <climits>
+#endif
+
 using namespace std;
 using namespace chrono;
 
@@ -567,13 +571,13 @@ bool isFeatureTree(Index idx, BPlusTree<Index> BTree) {
 }
 
 // Function to generate chemical graphs and write in Gaston format
-void generateChemicalGraphsGaston(int numGraphs = 1, int numVertices = 4, int numEdges = 4) {
+void generateChemicalGraphsGaston(int numGraphs = 550, int numVertices = 15, int numEdges = 17) {
     mt19937 rng(static_cast<unsigned>(time(0))); // Random generator
     uniform_int_distribution<int> vertexDist(0, numVertices - 1);
-    uniform_int_distribution<int> labelDist(0, 3);  // Vertex labels {0, 1, 2, 3}
+    uniform_int_distribution<int> labelDist(1, 3);  // Vertex labels {0, 1, 2, 3}
     uniform_int_distribution<int> edgeLabelDist(0, 2); // Edge labels {0, 1, 2}
 
-    ofstream outFile("C:\\Users\\matas\\Desktop\\Universitetas\\Ketvirtas kursas\\Septintas semestras\\Projektinis\\TreePi\\TreePi\\TreePi\\graph.txt");
+    ofstream outFile("/scratch/lustre/home/gymo8156/TreePi/graph.txt");
 
     for (int g = 0; g < numGraphs; ++g) {
         vector<int> vertices(numVertices);
@@ -636,21 +640,24 @@ int main() {
     cout << "Graph generation time:" << elapsed_seconds.count() << endl;
 
     vector<Graph> databaseGaston = setupGraphsGaston("graph.txt"); // Setup the graphs
-    unordered_map<Graph, int, GraphHasher> subtreeFrequencyGaston = gaston(1, "C:\\Users\\matas\\Desktop\\Universitetas\\Ketvirtas kursas\\Septintas semestras\\Projektinis\\TreePi\\TreePi\\TreePi\\graph.txt", "C:\\Users\\matas\\Desktop\\Universitetas\\Ketvirtas kursas\\Septintas semestras\\Projektinis\\TreePi\\TreePi\\TreePi\\output.txt"); // Calculate subtree frequencies
-
+    unordered_map<Graph, int, GraphHasher> subtreeFrequencyGaston = gaston(1, "/scratch/lustre/home/gymo8156/TreePi/graph.txt", "/scratch/lustre/home/gymo8156/TreePi/output.txt"); // Calculate subtree frequencies
+    cout << "Tree quantity: " << subtreeFrequencyGaston.size() << endl;
 
     // Calculate the average size of query graphs (sq)
-    int sq = 12; // Example value for sq (you can adjust this)
+    int sq = 10; // Example value for sq (you can adjust this)
 
     // Calculate alpha, beta, eta
-    int alpha, beta = 1, eta;
+    int alpha, beta = 5, eta;
     calculateAlphaBetaEta(sq, databaseGaston, alpha, eta);
-    
-    vector<Graph> freqTrees = filterTreesBySupportGaston(subtreeFrequencyGaston, alpha, beta, eta); // Filter trees based on support function
 
-    double gamma = 1;
+    vector<Graph> freqTrees = filterTreesBySupportGaston(subtreeFrequencyGaston, alpha, beta, eta); // Filter trees based on support function
+    cout << "Freq tree size:" << freqTrees.size() << endl;
+
+    double gamma = 2;
     vector<Graph> finalTrees = shrinkTreesGaston(freqTrees, subtreeFrequencyGaston, gamma); // Shrink the trees based on intersection
 
+    cout << "Final tree size:" << finalTrees.size() << endl;
+    
     start = chrono::system_clock::now();
 
     BPlusTree<Index> BTree(3);
@@ -664,6 +671,25 @@ int main() {
     end = chrono::system_clock::now();
 
     elapsed_seconds = end - start;
+    cout << "Total B+ Tree splits: " << BTree.getSplitCount() << endl;
+
+
+    size_t totalEncodingLength = 0;
+    std::unordered_set<std::string> uniqueEncodings;
+
+    for (const auto& tree : finalTrees) {
+        std::string encoding = tree.encode(); // or constructCanonicalForm()
+        totalEncodingLength += encoding.length();
+        uniqueEncodings.insert(encoding);
+    }
+
+    double avgEncodingLength = static_cast<double>(totalEncodingLength) / finalTrees.size();
+    double uniquenessRatio = static_cast<double>(uniqueEncodings.size()) / finalTrees.size();
+
+    cout << "Avg encoding length: " << avgEncodingLength << endl;
+    cout << "Unique encodings: " << uniqueEncodings.size() << " / " << finalTrees.size() << endl;
+    cout << "Uniqueness ratio: " << uniquenessRatio << endl;
+
 
     cout << "Indexing time:" << elapsed_seconds.count() << endl;
 
@@ -681,6 +707,33 @@ int main() {
     elapsed_seconds = end - start;
 
     cout << "Querying time:" << elapsed_seconds.count() << endl;
+
+    queries.clear();
+    finalTrees.clear();
+    freqTrees.clear();
+    databaseGaston.clear();
+
+    unordered_set<string> canonicalForms;
+    int duplicateCount = 0;
+
+    for (const auto& pair : subtreeFrequencyGaston) {
+        const Graph& g = pair.first;
+
+        // Wrap graph in Index to get canonical form
+        Index idx(g);
+        string canonical = idx.constructCanonicalForm();
+
+        // Check for duplicates
+        if (canonicalForms.find(canonical) != canonicalForms.end()) {
+            duplicateCount++;
+        } else {
+            canonicalForms.insert(canonical);
+        }
+    }
+
+    cout << "Total mined trees: " << subtreeFrequencyGaston.size() << endl;
+    cout << "Unique canonical trees: " << canonicalForms.size() << endl;
+    cout << "Duplicate trees: " << duplicateCount << endl;
         
     return 0;
 }

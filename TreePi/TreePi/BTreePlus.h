@@ -21,6 +21,8 @@ public:
     void insert(T key);
     bool search(T key);
     void printTree();
+    int splitCount = 0;
+    int getSplitCount() const { return splitCount; }
 
 private:
     Node* root;
